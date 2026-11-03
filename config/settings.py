@@ -69,3 +69,22 @@ class ROIConfig(BaseModel):
 
     def save(self, path: Path = ROI_FILE) -> None:
         path.write_text(self.model_dump_json(indent=2), "utf-8")
+
+
+PITCH_SIZE_M: tuple[float, float] = (105.0, 68.0)
+"""Campo oficial (comprimento, largura). Converte o radar normalizado para metros."""
+
+
+class TacticalThresholds(BaseModel):
+    """Limiares do motor tático, em metros."""
+
+    model_config = ConfigDict(frozen=True)
+
+    carrier_radius_m: float = 2.0  # bola até essa distância = posse do jogador
+    lane_radius_m: float = 1.5  # raio de interceptação junto ao passador
+    lane_growth: float = 0.08  # o raio cresce isso por metro de passe (cone de sombra)
+    max_pass_m: float = 40.0
+    min_pass_gain_m: float = 15.0  # passe de ruptura precisa avançar pelo menos isso
+    min_bypassed: int = 2  # ...e deixar pelo menos esse número de rivais para trás
+    max_cb_gap_m: float = 18.0  # acima disso, centro exposto
+    max_depth_m: float = 45.0  # acima disso, time espaçado
