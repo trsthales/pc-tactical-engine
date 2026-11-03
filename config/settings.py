@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 CONFIG_DIR = Path(__file__).resolve().parent
 ROI_FILE = CONFIG_DIR / "rois.json"
+DATA_DIR = CONFIG_DIR.parent / "data"
 
 # Resolução base de referência (Full HD 1080p)
 TARGET_RESOLUTION: tuple[int, int] = (1920, 1080)
