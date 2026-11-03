@@ -22,6 +22,9 @@ __pycache__/
 *.db
 *.sqlite
 *.sqlite3
+
+# Calibração local das ROIs (gerada por tools/calibrate_roi.py)
+config/rois.json
 data/*
 !data/.gitkeep
 
