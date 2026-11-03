@@ -65,7 +65,7 @@
 
 ---
 
-## ⏳ Marco 3: Motor Tático Espacial (Geometria Computacional)
+## ✅ Marco 3: Motor Tático Espacial (Geometria Computacional) *(IMPLEMENTADO)*
 > **Objetivo:** Transformar as coordenadas brutas dos jogadores em métricas analíticas e inteligência espacial de futebol em tempo real.
 
 * **Entregáveis Técnicos:**
@@ -80,7 +80,7 @@
 
 ---
 
-## ⏳ Marco 4: O "Coach Virtual" (Motor de Alertas e Áudio)
+## 🧪 Marco 4: O "Coach Virtual" (Motor de Alertas e Áudio) *(IMPLEMENTADO, validar voz no Windows)*
 > **Objetivo:** Transformar os eventos táticos em comandos audíveis claros e úteis no fone do jogador, sem causar sobrecarga cognitiva.
 
 * **Entregáveis Técnicos:**
@@ -94,7 +94,7 @@
 
 ---
 
-## ⏳ Marco 5: Ingestão Telemétrica Colunar & Analytics Pós-Jogo
+## ✅ Marco 5: Ingestão Telemétrica Colunar & Analytics Pós-Jogo *(IMPLEMENTADO)*
 > **Objetivo:** Gravar o histórico completo da partida em disco para auditoria, relatórios no intervalo e análises profundas pós-jogo.
 
 * **Entregáveis Técnicos:**
@@ -109,7 +109,7 @@
 
 ---
 
-## ⏳ Marco 6: Segunda Tela (WebSockets) & Integração End-to-End
+## 🚧 Marco 6: Segunda Tela (WebSockets) & Integração End-to-End *(PARCIAL: sem captura real)*
 > **Objetivo:** Unificar todos os módulos no script principal e disponibilizar um painel visual em tempo real para monitor secundário ou celular.
 
 * **Entregáveis Técnicos:**

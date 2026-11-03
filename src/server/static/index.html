@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FC Tactical Engine</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root {
+      --bg: #0b0f14; --panel: #121821; --text: #e6edf3; --muted: #8b98a5;
+      --team-a: #3b82f6; --team-b: #ef4444; --alert: #9a3412;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; }
+    main { max-width: 1200px; margin: 0 auto; padding: 12px 16px; display: grid; gap: 12px; }
+    header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+    .score { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .a { color: var(--team-a); } .b { color: var(--team-b); }
+    .chip { padding: 2px 10px; border-radius: 999px; background: var(--panel); color: var(--muted); font-size: 13px; }
+    .bar { display: flex; height: 10px; margin-top: 4px; border-radius: 5px; overflow: hidden; background: var(--panel); }
+    #bar-a { background: var(--team-a); transition: width .3s; } #bar-b { background: var(--team-b); flex: 1; }
+    #alert { min-height: 52px; padding: 12px 16px; border-radius: 10px; background: var(--panel);
+             font-size: 20px; font-weight: 600; color: var(--muted); transition: background .2s; }
+    #alert.on { background: var(--alert); color: var(--text); }
+    /* Cabe inteiro na tela: limita a largura pela altura disponível. */
+    canvas { display: block; width: min(100%, calc((100vh - 230px) * 105 / 68)); min-width: 280px;
+             margin: 0 auto; aspect-ratio: 105 / 68; border-radius: 10px; }
+    footer { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--muted); font-size: 12px; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="score"><span class="a">A</span> <span id="score">– –</span> <span class="b">B</span></span>
+    <span id="minute" class="chip">–'</span>
+    <span id="state" class="chip">conectando…</span>
+    <span id="possession" class="chip">posse: –</span>
+  </header>
+  <section>
+    Domínio territorial: <b id="control-a" class="a">50%</b> × <b id="control-b" class="b">50%</b>
+    <div class="bar"><div id="bar-a" style="width: 50%"></div><div id="bar-b"></div></div>
+  </section>
+  <div id="alert" role="status" aria-live="assertive">Sem alertas</div>
+  <canvas id="pitch" aria-label="Campo com jogadores, áreas de domínio e linhas de passe"></canvas>
+  <footer>
+    <span id="perf">–</span>
+    <span>Linha amarela: passe de ruptura livre · Tracejado: passe livre · Traço: direção do jogador</span>
+  </footer>
+</main>
+<script>
+  const PITCH_M = [105, 68];
+  const ALERT_SECONDS = 4;
+  const TEAM = {
+    A: { solid: "#3b82f6", area: "rgba(59, 130, 246, 0.22)" },
+    B: { solid: "#ef4444", area: "rgba(239, 68, 68, 0.22)" },
+  };
+  const STATE_LABEL = {
+    EM_ANDAMENTO: "em jogo", BOLA_PARADA: "bola parada", REPLAY: "replay", PAUSA: "pausa",
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const canvas = $("pitch");
+  const ctx = canvas.getContext("2d");
+  let latest = null;
+  let dirty = false;
+
+  function resize() {
+    const box = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(box.width * dpr);
+    canvas.height = Math.round(box.height * dpr);
+    dirty = true;
+  }
+
+  function drawPitch(W, H) {
+    const m = W / PITCH_M[0]; // pixels por metro
+    for (let i = 0; i < 10; i++) {
+      ctx.fillStyle = i % 2 ? "#166534" : "#14532d";
+      ctx.fillRect((i * W) / 10, 0, W / 10 + 1, H);
+    }
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.55)";
+    ctx.lineWidth = Math.max(1, W / 600);
+    ctx.setLineDash([]);
+    ctx.strokeRect(0, 0, W, H);
+    ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H); ctx.stroke();
+    ctx.beginPath(); ctx.arc(W / 2, H / 2, 9.15 * m, 0, 2 * Math.PI); ctx.stroke();
+    for (const [depth, width] of [[16.5, 40.3], [5.5, 18.3]]) {
+      const top = H / 2 - (width * m) / 2;
+      ctx.strokeRect(0, top, depth * m, width * m);
+      ctx.strokeRect(W - depth * m, top, depth * m, width * m);
+    }
+  }
+
+  function draw() {
+    requestAnimationFrame(draw);
+    if (!dirty || !latest) return;
+    dirty = false;
+
+    const { frame, snapshot } = latest;
+    const W = canvas.width, H = canvas.height;
+    const px = (x) => x * W, py = (y) => y * H;
+    drawPitch(W, H);
+
+    frame.players.forEach((player, i) => {
+      const cell = snapshot.regions[i];
+      if (!cell) return;
+      ctx.beginPath();
+      cell.forEach(([x, y], k) => (k ? ctx.lineTo(px(x), py(y)) : ctx.moveTo(px(x), py(y))));
+      ctx.closePath();
+      ctx.fillStyle = TEAM[player.team].area;
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+      ctx.stroke();
+    });
+
+    const byId = new Map(frame.players.map((p) => [p.id, p]));
+    for (const lane of snapshot.open_passes) {
+      const from = byId.get(lane.passer_id), to = byId.get(lane.receiver_id);
+      if (!from || !to) continue;
+      const through = lane.through;
+      ctx.setLineDash(through ? [] : [6, 6]);
+      ctx.strokeStyle = through ? "#facc15" : "rgba(255, 255, 255, 0.45)";
+      ctx.lineWidth = Math.max(1, W / (through ? 300 : 700));
+      ctx.beginPath(); ctx.moveTo(px(from.x), py(from.y)); ctx.lineTo(px(to.x), py(to.y)); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+
+    const radius = Math.max(4, W / 130);
+    for (const p of frame.players) {
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
+      ctx.lineWidth = Math.max(1, W / 800);
+      ctx.beginPath(); ctx.moveTo(px(p.x), py(p.y));
+      ctx.lineTo(px(p.x + p.vx * 0.5), py(p.y + p.vy * 0.5)); // onde estará em 0,5 s
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(px(p.x), py(p.y), radius, 0, 2 * Math.PI);
+      ctx.fillStyle = TEAM[p.team].solid; ctx.fill();
+      if (p.id === snapshot.carrier_id) {
+        ctx.strokeStyle = "#fff"; ctx.lineWidth = radius / 3; ctx.stroke();
+      }
+    }
+
+    if (frame.ball) {
+      ctx.beginPath(); ctx.arc(px(frame.ball[0]), py(frame.ball[1]), radius * 0.55, 0, 2 * Math.PI);
+      ctx.fillStyle = "#fff"; ctx.fill();
+      ctx.strokeStyle = "#000"; ctx.lineWidth = 1; ctx.stroke();
+    }
+  }
+
+  function update(data) {
+    latest = data;
+    dirty = true;
+    const { frame, snapshot, last_alert: alert } = data;
+    $("score").textContent = frame.score ? `${frame.score[0]} – ${frame.score[1]}` : "– –";
+    $("minute").textContent = frame.minute == null ? "–'" : `${frame.minute}'`;
+    $("state").textContent = STATE_LABEL[frame.state] ?? frame.state;
+    $("possession").textContent = `posse: ${snapshot.possession ?? "–"}`;
+
+    const controlA = Math.round(snapshot.control_a * 100);
+    $("control-a").textContent = `${controlA}%`;
+    $("control-b").textContent = `${100 - controlA}%`;
+    $("bar-a").style.width = `${controlA}%`;
+
+    const fresh = alert && frame.timestamp - alert.timestamp < ALERT_SECONDS;
+    $("alert").classList.toggle("on", Boolean(fresh));
+    $("alert").textContent = fresh ? alert.message : "Sem alertas";
+    $("perf").textContent = `motor ${data.engine_fps.toFixed(0)} FPS · ${data.cycle_ms.toFixed(2)} ms/frame`;
+  }
+
+  function connect() {
+    const scheme = location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${scheme}://${location.host}/ws`);
+    ws.onmessage = (event) => update(JSON.parse(event.data));
+    ws.onclose = () => {
+      $("state").textContent = "reconectando…";
+      setTimeout(connect, 1000);
+    };
+  }
+
+  window.addEventListener("resize", resize);
+  resize();
+  connect();
+  requestAnimationFrame(draw);
+</script>
+</body>
+</html>
