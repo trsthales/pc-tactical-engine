@@ -13,7 +13,7 @@ strict = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["dxcam", "cv2", "pyttsx3", "scipy.*", "shapely", "shapely.*", "duckdb"]
+module = ["dxcam", "cv2", "pyttsx3", "comtypes", "scipy.*", "shapely", "shapely.*", "duckdb"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

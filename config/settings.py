@@ -88,3 +88,14 @@ class TacticalThresholds(BaseModel):
     min_bypassed: int = 2  # ...e deixar pelo menos esse número de rivais para trás
     max_cb_gap_m: float = 18.0  # acima disso, centro exposto
     max_depth_m: float = 45.0  # acima disso, time espaçado
+
+
+class CoachConfig(BaseModel):
+    """Ritmo dos alertas de voz, para ajudar sem sobrecarregar o jogador."""
+
+    model_config = ConfigDict(frozen=True)
+
+    debounce_s: float = 0.1  # o evento precisa persistir isso antes de virar alerta
+    cooldown_s: float = 12.0  # o mesmo alerta não se repete antes disso
+    min_gap_s: float = 3.0  # intervalo mínimo entre dois alertas quaisquer
+    late_minute: int = 85  # a partir daqui, vencendo, o coach para de pedir ataque
