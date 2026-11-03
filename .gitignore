@@ -23,8 +23,9 @@ __pycache__/
 *.sqlite
 *.sqlite3
 
-# Calibração local das ROIs (gerada por tools/calibrate_roi.py)
+# Calibração local das ROIs e do radar (tools/calibrate_roi.py, tools/calibrate_radar.py)
 config/rois.json
+config/radar_background.png
 data/*
 !data/.gitkeep
 
@@ -40,6 +41,7 @@ captures/
 tests/samples/*
 !tests/samples/.gitkeep
 !tests/samples/sample_match.png
+!tests/samples/fc27/
 
 # ==============================================================================
 # TESTES, COBERTURA E QUALIDADE

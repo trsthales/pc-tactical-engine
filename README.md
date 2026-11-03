@@ -156,24 +156,31 @@ STATUS FINAL: [100% OPERACIONAL] Ambiente pronto para desenvolvimento!
 
 ### 5. Rodar o motor tático com a segunda tela
 ```powershell
-python main.py
+python main.py --screen                 # jogo aberto em tela cheia (Windows)
+python main.py --video partida.mp4      # vídeo gravado da partida, no ritmo do vídeo
+python main.py --video partida.mp4 --start 12:30 --speed 2   # pula até 12:30 do vídeo, 2x
+python main.py                          # radar simulado, sem o jogo
 ```
 Abre o painel em `http://localhost:8000` e mostra no terminal o endereço para abrir no tablet ou celular (mesma rede Wi-Fi; o Windows pede liberação no firewall na primeira vez). Opções: `--no-audio`, `--no-db`, `--no-browser`, `--host 127.0.0.1` (só este PC), `--port`.
 
+Times: por padrão você é o **triângulo vermelho** do radar e a **linha de cima** do placar (mandante). Jogando de visitante: `--team-a-blue --team-a-bottom`.
+
 > [!NOTE]
-> Enquanto a visão computacional (Marco 2) não fica pronta, a fonte de dados é um **radar simulado** (`src/simulation/`). Ele já exercita o motor tático, os alertas de voz, a gravação e o painel de ponta a ponta.
+> A visão foi calibrada no EA FC 27 com o radar padrão (vídeo de referência em 1080p). Radar com outro tamanho ou transparência nas opções do jogo: rode `python -m tools.calibrate_radar --screen` com uma partida rolando.
 
 ### 6. Ferramentas
 ```powershell
-python -m tools.grab_samples --every 3 --count 20   # prints do jogo em tests/samples/ (insumo do Marco 2)
+python -m tools.grab_samples --every 3 --count 20   # prints do jogo em tests/samples/
 python -m tools.calibrate_roi tests/samples/<print>.png   # ajusta radar/placar/HUD -> config/rois.json
+python -m tools.calibrate_radar --screen            # fundo do radar desta máquina -> config/radar_background.png
+python -m tools.validate_video partida.mp4          # roda a visão num vídeo e confere invariantes (placar, relógio, física)
 python -m src.capture.screen_capture --seconds 10   # benchmark da captura (FPS e ms por frame)
 python -m src.storage.post_match_reports --export parquet   # relatório da última partida gravada
 ```
 
 ### 7. Testes e qualidade
 ```powershell
-pytest
+pytest                                   # FC_VIDEO=partida.mp4 pytest  -> inclui o vídeo inteiro
 ruff check . ; ruff format --check config src tools tests main.py
 mypy config src tools tests main.py
 ```
@@ -224,11 +231,11 @@ O desenvolvimento do **FC-Tactical-Engine** é guiado por marcos incrementais co
 | :--- | :--- | :---: | :---: |
 | **Marco 0** | **Fundação, Arquitetura `src-layout` & Diagnóstico de Hardware (`sanity_check.py`)** | Setup Validado | ✅ **Concluído** |
 | **Marco 1** | **Camada de Ingestão Visual (`dxcam` 60 FPS, Win32 DPI & Multi-ROI Dinâmico)** | `< 4ms` / frame | 🧪 **Implementado** (validar no Windows) |
-| **Marco 2** | **Visão Computacional & Rastreamento de Entidades (Radar HSV + Estado do Jogo)** | `< 3ms` / frame | ⏳ Planejado |
+| **Marco 2** | **Visão Computacional & Rastreamento de Entidades (Radar HSV + Estado do Jogo)** | `< 3ms` / frame | ✅ **Implementado** (validado em vídeo do FC 27; falta validar ao vivo no Windows) |
 | **Marco 3** | **Motor Tático Espacial (Diagramas de Voronoi, Linhas de Zaga & Rede de Passes)** | `< 5ms` / ciclo | ✅ **Implementado** |
 | **Marco 4** | **"Coach Virtual" (Motor de Heurísticas, Debounce/Cooldown & Áudio TTS)** | `< 100ms` disparo | 🧪 **Implementado** (voz e latência a validar no Windows) |
 | **Marco 5** | **Ingestão Telemétrica Colunar (`DuckDB` Bulk Insert) & Analytics Pós-Jogo** | `< 50ms` query | ✅ **Implementado** |
-| **Marco 6** | **Segunda Tela em Tempo Real (`FastAPI` + `WebSockets` + Canvas 2D) & Orquestração** | `< 15ms` end-to-end | 🚧 **Parcial**: painel e orquestração com o simulador; captura não integrada, metas de latência e CPU não medidas |
+| **Marco 6** | **Segunda Tela em Tempo Real (`FastAPI` + `WebSockets` + Canvas 2D) & Orquestração** | `< 15ms` end-to-end | 🚧 **Parcial**: painel e orquestração com captura, vídeo ou simulador; metas de latência e CPU não medidas ao vivo |
 
 📖 Para consultar o detalhamento técnico completo de cada entregável e seus respectivos critérios de aceite, acesse o documento de planejamento: **[`docs/roadmap.md`](docs/roadmap.md)**.
 

@@ -9,7 +9,7 @@
 [ Marco 1 ] Camada de Ingestão de Baixa Latência & Multi-ROI Dinâmico (EM ANDAMENTO 🚧)
      │
      ▼
-[ Marco 2 ] Visão Computacional & Rastreamento das Entidades (Radar + HUD)
+[ Marco 2 ] Visão Computacional & Rastreamento das Entidades (Radar + HUD) (IMPLEMENTADO ✅)
      │
      ▼
 [ Marco 3 ] Motor Tático Espacial (Voronoi, Linhas de Zaga & Passes)
@@ -48,8 +48,17 @@
 
 ---
 
-## ⏳ Marco 2: Visão Computacional & Rastreamento de Entidades
+## ✅ Marco 2: Visão Computacional & Rastreamento de Entidades *(IMPLEMENTADO)*
 > **Objetivo:** Converter os pixels dos recortes em telemetria numérica utilizável (máquina de estados, centróides dos 22 jogadores + bola e leitura de tempo/placar).
+
+> **Como ficou** (validado num vídeo de partida inteira do EA FC 27, 1080p, 58.785 frames):
+> * `radar_geometry.py`: homografia das 4 bordas do trapézio do radar (perspectiva) para `[0, 1]²`; tudo calibrado de um fundo médio (`tools/calibrate_radar.py`).
+> * `radar_markers.py`: HSV + componentes conexos com área esperada por profundidade; separa marcadores fundidos (círculos pela área, triângulos pela forma); aceita a ponta de triângulo coberta por um círculo; descarta cena sem a borda do sprite.
+> * `radar_tracker.py`: identidade estável (algoritmo húngaro + portão físico), filtro alfa-beta, jogador escondido atrás de outro marcador segue quem o cobre.
+> * `ocr_hud.py`: placar e relógio por modelos de dígito (1.702 de 1.702 leituras certas no vídeo, nenhuma recusada); menu de pausa pela cor.
+> * `game_state_detector.py`: estado pela interface (radar, placar, menu) e lado de ataque pelos goleiros.
+> * Medido: 1,6 ms/frame no pipeline inteiro (radar < 3 ms); 0 voltas do relógio; 9 gols, todos +1; lado de ataque troca 1 vez (intervalo); 11 x 11 rastreados em 72% do jogo rolando (o resto é marcador escondido de verdade: atrás de outro, do árbitro ou do cinegrafista).
+> * Falta: validar ao vivo no Windows (`python main.py --screen`).
 
 * **Entregáveis Técnicos:**
   1. `src/vision/game_state_detector.py`: Classificador leve (via histogramas/templates) para detectar o estado da partida: `EM_ANDAMENTO`, `BOLA_PARADA`, `REPLAY` ou `PAUSA`.

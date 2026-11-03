@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 CONFIG_DIR = Path(__file__).resolve().parent
 ROI_FILE = CONFIG_DIR / "rois.json"
+RADAR_BACKGROUND_FILE = CONFIG_DIR / "radar_background.png"
 DATA_DIR = CONFIG_DIR.parent / "data"
 
 # Resolução base de referência (Full HD 1080p)
@@ -55,9 +56,10 @@ class ROIConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    # Valores de partida medidos em 1080p; o radar original era (760, 820, 1160, 1040) px.
-    radar: ROI = ROI.from_pixels((760, 820, 1160, 1040), *TARGET_RESOLUTION)
-    scoreboard: ROI = ROI(left=0.03, top=0.03, right=0.25, bottom=0.09)
+    # Layout do HUD do EA FC 27, medido num vídeo 1920x1072 (radar embaixo no centro, placar
+    # no canto superior esquerdo). Os detectores trabalham sobre esses recortes.
+    radar: ROI = ROI.from_pixels((760, 845, 1160, 1035), 1920, 1072)
+    scoreboard: ROI = ROI.from_pixels((80, 40, 320, 150), 1920, 1072)
     player_hud: ROI = ROI(left=0.0, top=0.85, right=0.25, bottom=1.0)
 
     def named(self) -> dict[str, ROI]:
@@ -100,3 +102,59 @@ class CoachConfig(BaseModel):
     cooldown_s: float = 12.0  # o mesmo alerta não se repete antes disso
     min_gap_s: float = 3.0  # intervalo mínimo entre dois alertas quaisquer
     late_minute: int = 85  # a partir daqui, vencendo, o coach para de pedir ataque
+
+
+class VisionConfig(BaseModel):
+    """Limiares da visão (Marco 2), medidos no radar e no placar do EA FC 27.
+
+    Matiz (H) na escala do OpenCV, 0 a 179. Áreas em pixels do recorte de referência.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    # Radar presente: escurece o gramado (opacidade) e tem o desenho do radar (similaridade).
+    # O fade de entrada/saída fica abaixo de 0,6; cenas escuras sem radar, abaixo de 0,4.
+    # Histerese: já visível, só some abaixo dos limiares "keep" (linhas da cena por cima do
+    # radar baixam a opacidade para ~0,55 sem ele sumir).
+    min_radar_opacity: float = 0.6
+    min_radar_similarity: float = 0.4
+    keep_radar_opacity: float = 0.45
+    keep_radar_similarity: float = 0.3
+    min_scoreboard_similarity: float = 0.6
+    # Menu de pausa: fundo azul-marinho liso + título branco no canto do placar.
+    min_menu_navy: float = 0.8
+    menu_title_fraction: tuple[float, float] = (0.03, 0.09)
+    min_menu_flat: float = 0.65
+
+    # Cores dos marcadores: time A = triângulos vermelhos, time B = círculos azuis, bola = "+".
+    # vermelho passa pelo zero; até 11 cobre o marcador semitransparente no fade (mistura com
+    # o verde puxa o matiz para o laranja). A bola começa em 12.
+    red_hue: tuple[int, int] = (170, 11)
+    blue_hue: tuple[int, int] = (100, 125)
+    ball_hue: tuple[int, int] = (12, 30)
+    min_saturation: int = 120
+    min_ball_saturation: int = 130
+    min_value: int = 110
+    # Área do miolo colorido de um marcador cresce com a profundidade (perspectiva):
+    # area(y) = a + b·y, y em pixels do recorte. Mediana medida em ~1400 frames.
+    red_area: tuple[float, float] = (13.0, 0.18)
+    blue_area: tuple[float, float] = (17.0, 0.34)
+    min_area_ratio: float = 0.35  # menos que isso do esperado: ruído ou marcador quase coberto
+    min_ball_area: int = 8
+    players_per_team: int = 11
+
+    # Leitura de dígitos do placar e do relógio (modelos em src/vision/assets/digits.png).
+    min_digit_score: float = 0.8
+    min_digit_margin: float = 0.05
+
+    # Rastreamento: suavização alfa-beta, tempo máximo sem detecção e salto máximo.
+    track_alpha: float = 0.35
+    track_beta: float = 0.07  # ~ alfa²/(2 - alfa): resposta sem oscilar
+    ball_alpha: float = 0.8
+    max_coast_s: float = 0.5
+    max_speed_m_s: float = 12.0
+    gate_margin_m: float = 3.0
+    # Entrar em jogo exige o radar por alguns frames (fade); sair é imediato.
+    frames_to_resume: int = 3
+    # Lado de ataque: média móvel do voto dos goleiros, com histerese.
+    side_time_constant_s: float = 3.0
